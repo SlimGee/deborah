@@ -43,7 +43,7 @@ jupyter-client==7.3.1
 jupyter-core==4.10.0
 jupyterlab-pygments==0.2.2
 jupyterlab-widgets==1.1.0
-lxml==4.9.0
+lxml
 MarkupSafe==2.1.1
 matplotlib-inline==0.1.3
 mistune==0.8.4
@@ -57,7 +57,7 @@ numpy==1.22.4
 openpyxl==3.0.10
 oscrypto==1.3.0
 packaging==21.3
-pandas==1.4.2
+pandas
 pandocfilters==1.5.0
 parso==0.8.3
 pickleshare==0.7.5
@@ -81,10 +81,10 @@ pyOpenSSL==22.0.0
 pyparsing==3.0.9
 pyrsistent==0.18.1
 python-dateutil==2.8.2
-pytz==2022.1
+pytz
 pytz-deprecation-shim==0.1.0.post0
 pyzmq==23.1.0
-requests==2.27.1
+requests
 requests-futures==1.0.0
 rich==12.4.4
 semver==2.13.0
@@ -115,5 +115,5 @@ webencodings==0.5.1
 widgetsnbextension==3.6.0
 yahooquery==2.2.15
 yarg==0.1.9
-yfinance==0.1.70
+yfinance==0.2.38
 zipp==3.8.0
