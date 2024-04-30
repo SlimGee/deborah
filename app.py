@@ -14,112 +14,8 @@ from yahooquery import Ticker
 import requests
 from bs4 import BeautifulSoup
 
+from streamlit_authentication import authenticate
 from functions import *
-
-
-def get_nasdaq_tickers_from_finviz():
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36"
-    }
-    url = "https://finviz.com/screener.ashx?v=111&f=exch_nasd"
-    response = requests.get(url, headers=headers)
-
-    soup = BeautifulSoup(response.content, "html.parser")
-
-    ticker_table = soup.find("table", attrs={"class": "styled-table-new"})
-
-    tickers = []
-    for row in ticker_table.find_all("tr")[1:]:  # Skip header row
-        cells = row.find_all("td")
-        ticker = cells[1].text
-        company_name = cells[2].text
-        tickers.append((ticker, company_name))  # Assuming ticker is in the second cell
-    return tickers
-
-
-tickers = [
-    "FB",
-    "AAPL",
-    "BRK.B",
-    "TSLA",
-    "MCD",
-    "VZ",
-    "BA",
-    "NKE",
-    "^GSPC",
-    "NQ=F",
-    "ALB",
-    "AOS",
-    "APPS",
-    "AQB",
-    "ASPN",
-    "ATHM",
-    "AZRE",
-    "BCYC",
-    "BGNE",
-    "CAT",
-    "CC",
-    "CLAR",
-    "CLCT",
-    "CMBM",
-    "CMT",
-    "CRDF",
-    "CYD",
-    "DE",
-    "DKNG",
-    "EMN",
-    "FBIO",
-    "FBRX",
-    "FCX",
-    "FLXS",
-    "FMC",
-    "FMCI",
-    "GME",
-    "GRVY",
-    "HAIN",
-    "HBM",
-    "HIBB",
-    "IEX",
-    "IOR",
-    "GOOGL",
-    "MAXR",
-    "MPX",
-    "MRTX",
-    "NSTG",
-    "NVCR",
-    "NVO",
-    "OESX",
-    "PENN",
-    "PLL",
-    "PRTK",
-    "RDY",
-    "REGI",
-    "REKR",
-    "SBE",
-    "SQM",
-    "TCON",
-    "TWTR",
-    "TGB",
-    "TRIL",
-    "UEC",
-    "VCEL",
-    "VOXX",
-    "WITH",
-    "WKHS",
-    "XNCR",
-]
-
-
-def get_company_name_alpha_vantage(ticker):
-    # API_KEY = "0266Y2CMVFHMVNXU"
-    # url = f"https://www.alphavantage.co/query?function=OVERVIEW&symbol={ticker}&apikey={API_KEY}"
-    # response = requests.get(url)
-    # data = response.json()
-    # print(data)
-    comp = yf.Ticker(ticker)
-    data = comp.info
-    print(data)
-    return data.get("Name")
 
 
 def filter_companies(pair):
@@ -131,12 +27,9 @@ def filter_companies(pair):
 
 
 def get_company_list():
-    companies = {}
-    for ticker in tickers:
-        company_name = get_company_name_alpha_vantage(ticker)
-        companies[ticker] = company_name
-    companies = dict(filter(filter_companies, companies.items()))
-    print(companies)
+    f = open("companies.json", "r")
+    companies = json.load(f)
+    # print(companies)
 
     return companies
 
@@ -210,20 +103,8 @@ ticker_lookup = {name: ticker for ticker, name in companies.items()}
 
 selected_company = st.selectbox("Select a company", ticker_lookup)
 
-# Alternatively, allow the user to enter a company name
-entered_company = st.text_input("Or enter a company name", "")
 
-# Check if the entered company exists in the API
-if entered_company:
-    if entered_company in companies:
-        ticker = entered_company.replace(" ", "/")
-    else:
-        st.error(
-            f"{entered_company} is not found in the database. Please try another company name."
-        )
-
-
-if selected_company or entered_company:
+if selected_company:
     ticker = ticker_lookup[selected_company]
     comp = yf.Ticker(ticker)
 
@@ -244,12 +125,6 @@ if selected_company or entered_company:
         st.error("No data available for the selected company.")
         st.stop()
 
-    # print(balanceSheet)
-
-    # Cleaning the data
-
-    # print(incomeStatement)
-
     # Income Statement
     incomeStatement = incomeStatement[incomeStatement.columns[0:2]]
     incomeStatement.columns = ["2022", "2021"]
@@ -264,7 +139,7 @@ if selected_company or entered_company:
     cashFlow = cashFlow[cashFlow.columns[0:2]]
     cashFlow.columns = ["2022", "2021"]
     cashFlow.dropna()
-    print(balanceSheet)
+    # print(balanceSheet)
 
     if (
         "Gross Profit" not in incomeStatement.index
