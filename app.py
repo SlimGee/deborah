@@ -11,62 +11,33 @@ from babel.numbers import format_currency
 from openpyxl import Workbook, load_workbook
 from streamlit_lottie import st_lottie
 from yahooquery import Ticker
+import requests
+from bs4 import BeautifulSoup
 
 from functions import *
 
 
-def load_lottiefile(filepath: str):
-    with open(filepath, "r") as f:
-        return json.load(f)
+def get_nasdaq_tickers_from_finviz():
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36"
+    }
+    url = "https://finviz.com/screener.ashx?v=111&f=exch_nasd"
+    response = requests.get(url, headers=headers)
+
+    soup = BeautifulSoup(response.content, "html.parser")
+
+    ticker_table = soup.find("table", attrs={"class": "styled-table-new"})
+
+    tickers = []
+    for row in ticker_table.find_all("tr")[1:]:  # Skip header row
+        cells = row.find_all("td")
+        ticker = cells[1].text
+        company_name = cells[2].text
+        tickers.append((ticker, company_name))  # Assuming ticker is in the second cell
+    return tickers
 
 
-lottie_analysis = load_lottiefile("lottiefiles/analysis.json")
-lottie_hello = load_lottiefile("lottiefiles/hello.json")
-
-st.set_page_config(
-    page_title="FA",
-    page_icon="chart_with_upwards_trend",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
-
-hide_st_style = """
-<style>
-#MainMenu {visibility: hidden;}
-header{visibility: hidden;}
-footer {visibility: hidden;}
-</style>
-
-"""
-st.markdown(hide_st_style, unsafe_allow_html=True)
-
-# ---Side-Bar----
-
-with st.sidebar:
-    st_lottie(lottie_hello, loop=True, key=None, height=320, width=320)
-    st.write(
-        """
-    Hey 👋🏻there. I am Vidhya Varshany, a sophomore decision science student👩🏻. I enjoy working with data sets and extracting information from them, which qualifies me to be a data analyst🎯. My interests include Data Science and Data Analytics🎗️.
-
-    To know more about me . Follow me on
-    [LinkedIn](https://www.linkedin.com/in/vidhyavarshany/)
-
-    [Twitter](https://twitter.com/vidhyavarshany)
-    """
-    )
-    st.write("---")
-    st.write("#### About📍")
-    st.write(
-        """
-    This Web App is based on the Beneish model, a mathematical model that uses financial ratios and eight variables to determine whether a company has manipulated earnings. Based on company financial statements, an M-Score is constructed to describe how much earnings have been manipulated.
-    """
-    )
-
-pd.set_option("mode.chained_assignment", None)
-
-# Fetching the Tickers Module
-
-symbols = [
+tickers = [
     "FB",
     "AAPL",
     "BRK.B",
@@ -137,49 +108,126 @@ symbols = [
     "WKHS",
     "XNCR",
 ]
-# Create Ticker instance, passing symbols as first argument
-# Optional asynchronous argument allows for asynchronous requests
-# tickers = Ticker(symbols, asynchronous=True)
-# msft = yf.Ticker("MSFT")
 
-# dat = tickers.get_modules("summaryProfile quoteType")
 
-# symb = pd.DataFrame.from_dict(dat).T
-# flatten dicts within each column, creating new dataframes
-# dataframes = [
-#    pd.json_normalize([x for x in symb[module] if isinstance(x, dict)])
-#    for module in ["summaryProfile", "quoteType"]
-# ]
-# concat dataframes from previous step
-# symb = pd.concat(dataframes, axis=1)
-# symb = symb[["shortName", "symbol"]].dropna()
-# symb = symb.sort_values("symbol")
-# symb.set_index("shortName", inplace=True, drop=True)
-# symb = symb.reset_index()  # reset index
-# symb.index = symb.index + 1  # add 1 to each index
-# symb.columns = ["Companies", "Symbol"]
-# data = symb.copy()
+def get_company_name_alpha_vantage(ticker):
+    # API_KEY = "0266Y2CMVFHMVNXU"
+    # url = f"https://www.alphavantage.co/query?function=OVERVIEW&symbol={ticker}&apikey={API_KEY}"
+    # response = requests.get(url)
+    # data = response.json()
+    # print(data)
+    comp = yf.Ticker(ticker)
+    data = comp.info
+    print(data)
+    return data.get("Name")
 
-# !IMPORTANT
-# symb["Companies"] = symb["Companies"].str.replace("'", "''")
 
-# -----Home Page-----
+def filter_companies(pair):
+    print(pair)
+    key, value = pair
+    if value is None:
+        return False
+    return True
 
-st.title("Analyzing the Quality of Financial Statements using Beneish Model")
-# with st.container():
-#    left_col, right_col = st.columns((2, 1))
-#    with left_col:
-#        st.dataframe(data)
-#    with right_col:
-#        st_lottie(lottie_analysis, height="300", width="500", quality="high", key=None)
-# -- Input----
 
-ch = st.number_input("\n\nEnter your choice from the above listed company: ", value=0)
-if ch:
+def get_company_list():
+    companies = {}
+    for ticker in tickers:
+        company_name = get_company_name_alpha_vantage(ticker)
+        companies[ticker] = company_name
+    companies = dict(filter(filter_companies, companies.items()))
+    print(companies)
 
-    comp = yf.Ticker("REKR")
+    return companies
 
-    st.write(f" #### Company Name - \n #### Symbol - ")
+
+# Function to fetch company data from Yahoo Finance
+
+
+def get_company_data(ticker, start_date, end_date):
+    try:
+        company = yf.Ticker(ticker)
+        data = company.history(start=start_date, end=end_date)
+        return data
+    except:
+        return None
+
+
+def load_lottiefile(filepath: str):
+    with open(filepath, "r") as f:
+        return json.load(f)
+
+
+lottie_analysis = load_lottiefile("lottiefiles/analysis.json")
+lottie_hello = load_lottiefile("lottiefiles/hello.json")
+
+st.set_page_config(
+    page_title="FA",
+    page_icon="chart_with_upwards_trend",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+hide_st_style = """
+<style>
+#MainMenu {visibility: hidden;}
+header{visibility: hidden;}
+footer {visibility: hidden;}
+</style>
+
+"""
+st.markdown(hide_st_style, unsafe_allow_html=True)
+
+# ---Side-Bar----
+
+with st.sidebar:
+    st_lottie(lottie_hello, loop=True, key=None, height=320, width=320)
+    st.write(
+        """
+    Hey 👋🏻there. I aDeborah Fuyiwa, a final year forensic auditing student at the Harare Institute of Technology. I am passionate about forensic auditing and data analysis. I am currently working on a project that involves the analysis of financial statements using the Beneish Model and Dechow F Score model. I am excited to share my project with you. Feel free to reach out to me on [LinkedIn](https://www.linkedin.com/in/deborah-fuyiwa-8b7b2b1b7/).
+    """
+    )
+    st.write("---")
+    st.write("#### About📍")
+    st.write(
+        """
+        This web app is designed to analyze the quality of financial statements using the Beneish Model. The Beneish Model is a statistical model that uses financial ratios to detect earnings manipulation. The model uses eight financial ratios to determine the likelihood of earnings manipulation. The Dechow F-Score is also used to analyze the quality of financial statements. The Dechow F-Score uses four financial ratios to determine the likelihood of earnings manipulation. The web app uses data from Yahoo Finance to calculate the financial ratios and the Beneish M-Score. The web app also calculates the Dechow F-Score and its components. The web app is designed to help users analyze the quality of financial statements and detect earnings manipulation. 
+    """
+    )
+
+pd.set_option("mode.chained_assignment", None)
+
+
+st.title(
+    "Analyzing the Quality of Financial Statements using Beneish Model and Dechow F Score"
+)
+
+
+# Sidebar to select or enter a company
+st.sidebar.title("Select a Company")
+companies = get_company_list()
+ticker_lookup = {name: ticker for ticker, name in companies.items()}
+
+selected_company = st.selectbox("Select a company", ticker_lookup)
+
+# Alternatively, allow the user to enter a company name
+entered_company = st.text_input("Or enter a company name", "")
+
+# Check if the entered company exists in the API
+if entered_company:
+    if entered_company in companies:
+        ticker = entered_company.replace(" ", "/")
+    else:
+        st.error(
+            f"{entered_company} is not found in the database. Please try another company name."
+        )
+
+
+if selected_company or entered_company:
+    ticker = ticker_lookup[selected_company]
+    comp = yf.Ticker(ticker)
+
+    st.write(f" #### Company Name - {selected_company}\n #### Symbol - {ticker}")
 
     with hc.HyLoader("Now doing loading", hc.Loaders.standard_loaders, index=[3, 0, 5]):
         time.sleep(5)
@@ -192,9 +240,15 @@ if ch:
     pd.set_option("display.max_columns", None)
     pd.set_option("display.width", None)
 
-    print(cashFlow)
+    if incomeStatement.empty or balanceSheet.empty or cashFlow.empty:
+        st.error("No data available for the selected company.")
+        st.stop()
+
+    # print(balanceSheet)
 
     # Cleaning the data
+
+    # print(incomeStatement)
 
     # Income Statement
     incomeStatement = incomeStatement[incomeStatement.columns[0:2]]
@@ -210,6 +264,15 @@ if ch:
     cashFlow = cashFlow[cashFlow.columns[0:2]]
     cashFlow.columns = ["2022", "2021"]
     cashFlow.dropna()
+    print(balanceSheet)
+
+    if (
+        "Gross Profit" not in incomeStatement.index
+        or "Current Liabilities" not in balanceSheet.index
+        or "Current Assets" not in balanceSheet.index
+    ):
+        st.error("No data available for the selected company.")
+        st.stop()
 
     # COGS = Revenue  - GrossProfit
     cogs22 = (
@@ -227,7 +290,7 @@ if ch:
 
     # long term Debt
 
-    if "Long Term Debt" not in balanceSheet.index:
+    if "Long Term Debt And Capital Lease Obligation" not in balanceSheet.index:
         ld22 = (
             balanceSheet.at["Total Liab", "2022"]
             - balanceSheet.at["Total Current Liabilities", "2022"]
@@ -246,6 +309,12 @@ if ch:
 
         balanceSheet.loc["Long Term Investments"] = [li22, li21]
 
+    if "Net PPE" not in balanceSheet.index:
+        pp22 = balanceSheet.at["Machinery Furniture Equipment", "2022"]
+        pp21 = balanceSheet.at["Machinery Furniture Equipment", "2021"]
+
+        balanceSheet.loc["Net PPE"] = [pp22, pp21]
+
     # Extracting the statements
 
     df = incomeStatement.loc[
@@ -261,14 +330,14 @@ if ch:
         [
             "Receivables",
             "Current Assets",
-            "Machinery Furniture Equipment",
+            "Net PPE",
             "Long Term Investments",
             "Total Assets",
             "Current Liabilities",
-            "Long Term Debt",
+            "Long Term Debt And Capital Lease Obligation",
         ]
     ]
-    df3 = cashFlow.loc[["Depreciation", "Operating Cash Flow"]]
+    df3 = cashFlow.loc[["Depreciation And Amortization", "Operating Cash Flow"]]
 
     data = pd.concat([df, df2, df3])
     data = data.reindex(
@@ -276,15 +345,15 @@ if ch:
             "Total Revenue",
             "Cost of Goods Sold",
             "Selling General And Administration",
-            "Depreciation",
+            "Depreciation And Amortization",
             "Net Income Continuous Operations",
             "Receivables",
             "Current Assets",
-            "Machinery Furniture Equipment",
+            "Net PPE",
             "Long Term Investments",
             "Total Assets",
             "Current Liabilities",
-            "Long Term Debt",
+            "Long Term Debt And Capital Lease Obligation",
             "Operating Cash Flow",
         ]
     )
@@ -392,3 +461,67 @@ if ch:
         res = " ##### Company is not likely to manipulate their earnings"
         st.write(f"##### M- Score = {round(m_score,2)}")
         st.write(f"{res}")
+
+    f_score = calculate_dechow_f_score(data, "2021", "2022")
+    start_year = "2021"
+    end_year = "2022"
+
+    rsst = calculate_rsst(data, start_year, end_year)
+    delta_rec = calculate_delta_rec(data, start_year, end_year)
+    delta_inv = calculate_delta_inv(data, start_year, end_year)
+    soft_assets = calculate_soft_assets(data, end_year)
+    delta_cash_sales = calculate_delta_cash_sales(data, start_year, end_year)
+    delta_roa = calculate_delta_roa(data, start_year, end_year)
+    issue_indicator = calculate_issue_indicator(data, start_year, end_year)
+
+    f_score_data = {
+        "F-Score Components": [
+            "RSST Accruals",
+            "Change in Receivables",
+            "Change in Inventory",
+            "Soft Assets",
+            "Change in Cash Sales",
+            "Change in ROA",
+            "Issue Indicator",
+        ],
+        "Values": [
+            rsst,
+            delta_rec,
+            delta_inv,
+            soft_assets,
+            delta_cash_sales,
+            delta_roa,
+            issue_indicator,
+        ],
+    }
+
+    # Create the DataFrame
+    f_score_df = pd.DataFrame(f_score_data)
+    f_score_df.set_index("F-Score Components", inplace=True, drop=True)
+
+    # Display the Dechow F-Score and its components in Streamlit
+    with st.container():
+        st.header("Dechow F-Score Analysis")
+        st.write(
+            "This section displays the Dechow F-Score and its components for the period 2021 to 2022."
+        )
+        st.dataframe(f_score_df)
+
+        # Prepare the data for the line chart
+        temp_f_score_df = f_score_df.copy()
+        temp_f_score_df.index.name = "Components"
+        temp_f_score_df["Components"] = temp_f_score_df.index
+        temp_f_score_df = temp_f_score_df.reset_index(drop=True)
+        temp_f_score_df.columns = ["Components", "Values"]
+
+        # The Line Chart using Plotly
+        fig = px.line(
+            temp_f_score_df,  # Data Frame
+            x="Components",  # Columns from the data frame
+            y="Values",
+            title="Dechow F-Score Components",
+        )
+        fig.update_traces(line_color="blue")
+        st.plotly_chart(fig)
+
+    st.write(f"##### F - Score = {round(f_score, 2)}")

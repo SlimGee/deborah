@@ -113,7 +113,7 @@ watchdog==2.1.8
 wcwidth==0.2.5
 webencodings==0.5.1
 widgetsnbextension==3.6.0
-yahooquery==2.2.15
+yahooquery
 yarg==0.1.9
 yfinance==0.2.38
 zipp==3.8.0
